@@ -1,7 +1,7 @@
 {
   "domain": "snmp_r1d1",
   "name": "SNMP Integration",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "codeowners": ["@DucuSandu"],
   "documentation": "https://github.com/DucuSandu/ha-snmp-r1d1",
   "issue_tracker": "https://github.com/DucuSandu/ha-snmp-r1d1/issues",
