@@ -12,4 +12,5 @@
   "brand": "snmp",
   "after_dependencies": ["network"],
   "loggers": ["snmp_r1d1"]
+  
 }
