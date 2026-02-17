@@ -4,6 +4,7 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
+
 # ================================================================
 # Boolean vmap (for switch and binary_sensor)
 # ================================================================
@@ -84,7 +85,9 @@ def apply_vmap(value, vmap, sensor_id, logger=_LOGGER):
                     # 🔎 Skip bad numeric compares instead of erroring
                     logger.debug(
                         "apply_vmap skip numeric compare [%s]: value=%r not numeric for threshold '%s'",
-                        sensor_id, value, key
+                        sensor_id,
+                        value,
+                        key,
                     )
                     continue
             elif str(value) == key:
@@ -93,8 +96,11 @@ def apply_vmap(value, vmap, sensor_id, logger=_LOGGER):
         return value
     except Exception as e:
         logger.error("Error applying vmap for %s: %s", sensor_id, e)
-        logger.debug("apply_vmap context [%s]: value=%r, vmap=%s", sensor_id, value, vmap)
+        logger.debug(
+            "apply_vmap context [%s]: value=%r, vmap=%s", sensor_id, value, vmap
+        )
         return value
+
 
 # ================================================================
 # Boolean → SNMP mapping (write path)
@@ -113,7 +119,9 @@ def to_snmp_bool(state: bool, vmap: dict, sensor_id: str, logger=_LOGGER):
     """
     try:
         if not vmap or "on" not in vmap or "off" not in vmap:
-            logger.error("No valid vmap defined for %s (requires both 'on' and 'off')", sensor_id)
+            logger.error(
+                "No valid vmap defined for %s (requires both 'on' and 'off')", sensor_id
+            )
             return None
 
         return vmap["on"] if state else vmap["off"]
@@ -121,6 +129,8 @@ def to_snmp_bool(state: bool, vmap: dict, sensor_id: str, logger=_LOGGER):
     except Exception as e:
         logger.error("Error mapping boolean state for %s: %s", sensor_id, e)
         return None
+
+
 # ================================================================
 # Entity naming helpers
 # ================================================================
@@ -158,10 +168,13 @@ def make_port_entity_name(port_key: str, sensor_type: str) -> str:
         port_num = port_key or "?"
     return f"Port-{port_num} {make_entity_name(sensor_type)}"
 
+
 # ================================================================
 # Helper: Consistent unique_id generator for entities
 # ================================================================
-def make_entity_id(entry_id: str, key: str, suffix: str = None, port: str = None) -> str:
+def make_entity_id(
+    entry_id: str, key: str, suffix: str = None, port: str = None
+) -> str:
     """Build a consistent entity unique_id for Home Assistant entities.
 
     This function ensures all entity IDs across sensors, switches,
