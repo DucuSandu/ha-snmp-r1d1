@@ -879,6 +879,9 @@ class SnmpFlowHelper:
             f"PoE Port Entities: {poe_port_count} ports - "
             f"{', '.join(sorted(poe_port_entities)) if poe_port_entities else 'None'}"
         )
+        
+        has_mac = any(e.get("type") in ("mac_table", "mac_port") for e in flow._validated_oids.get("device", {}).values())
+        mac_text = f"MAC Table + {flow._device_info.get('port_count', 0)} port switches" if has_mac else "None"
 
         # Build schema dynamically in correct order
         schema_dict = {}
@@ -908,10 +911,11 @@ class SnmpFlowHelper:
 
         schema_dict[vol.Optional("device_poe", default=device_poe_text)] = selector.TextSelector(selector.TextSelectorConfig(multiline=False))
         schema_dict[vol.Optional("poe_port_entities", default=poe_port_entities_text)] = selector.TextSelector(selector.TextSelectorConfig(multiline=False))
-        schema_dict[vol.Optional("device_mac", default="MAC Entities: None")] = selector.TextSelector(selector.TextSelectorConfig(multiline=False))
+
+
+        schema_dict[vol.Optional("device_mac", default=f"MAC Entities: {mac_text}")] = selector.TextSelector(selector.TextSelectorConfig(multiline=False))
 
         schema_dict[vol.Required(CONF_CONFIRM, default=True)] = bool
-
 
         return flow.async_show_form(
             step_id="present",
@@ -959,7 +963,7 @@ class SnmpFlowHelper:
                 flow.hass.config_entries.async_update_entry(entry, data=flow._data)
                 _LOGGER.info("        Step finish updated config entry: %s", flow._entry_id)
                 # Reload only during reconfigure
-                await flow.hass.config_entries.async_reload(flow._entry_id)
+ #claude      await flow.hass.config_entries.async_reload(flow._entry_id)
             return flow.async_create_entry(title="", data={})
 
         # First-time setup → no reload yet
