@@ -15,7 +15,6 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.switch import SwitchEntity
 from .helpers import make_entity_name, make_port_entity_name, make_entity_id
-
 _LOGGER = logging.getLogger(__name__)
 
 

@@ -45,11 +45,10 @@ def eval_formula(formula: str, x):
     except Exception:
         return x
 
-
 # ================================================================
 # Helper: Apply calculation (direct, diff, or formula)
 # ================================================================
-def apply_calc(raw_value, entry, coordinator, sensor_id, is_port=False):
+def apply_calc(raw_value, entry, coordinator, sensor_id, is_port=False, port_key=None):
     """Apply calculation based on calc type, then optional math formula."""
     calc_type = entry.get("calc", "direct")  # default is "direct"
     math_formula = entry.get("math")  # optional formula string
@@ -69,7 +68,6 @@ def apply_calc(raw_value, entry, coordinator, sensor_id, is_port=False):
 
             # Port-level diff calculation
             if is_port:
-                port_key = sensor_id.split("_")[1]
                 previous_port_data = previous_data.get("ports", {}).get(port_key, {})
                 previous_raw = previous_port_data.get(entry.get("key"))
                 previous_timestamp = previous_data.get("last_updated", {}).get(
@@ -119,13 +117,11 @@ def apply_calc(raw_value, entry, coordinator, sensor_id, is_port=False):
                 result = eval_formula(math_formula, result)
             except Exception:
                 pass
-
         return result
 
     except Exception as e:
         _LOGGER.error(f"Error applying calc for {sensor_id}: {e}")
         return raw_value
-
 
 
 # ================================================================
@@ -190,22 +186,16 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     if has_mac_table and has_mac_port:
         port_count = int(device_info_data.get("port_count", 1))
         entities.append(mac_table.DeviceMacTableSensor(coordinator, prefix, device_info))
-       # entities.append(mac_table.DeviceMacCountSensor(coordinator, prefix, device_info))
         entities.append(mac_table.DeviceMacTableLastUpdateSensor(coordinator, prefix, device_info))
         for port in range(1, port_count + 1):
             entities.append(mac_table.PortMacCountSensor(coordinator, prefix, port, device_info))
         _LOGGER.info("MAC table sensors created")
-          # Add the raw data entity
-#        entities.append(mac_table.MacTableEntity(coordinator, prefix, device_info))
+
     else:
         _LOGGER.info("No MAC table OIDs found, skipping MAC sensors")
     # Add all entities to HA
     async_add_entities(entities)
     _LOGGER.info("Sensor setup completed")
-
-
-
-
 
 # ================================================================
 # Entity: Device-level numeric sensor
@@ -233,7 +223,7 @@ class SnmpSensor(SensorEntity):
         self.async_on_remove(self.coordinator.async_add_listener(self.async_write_ha_state))
 
     @property
-    def state(self):
+    def native_value(self):
         # Get raw value
         if not self.coordinator.data or "device" not in self.coordinator.data:
             return None
@@ -272,32 +262,19 @@ class SnmpPortSensor(SensorEntity):
         self.async_on_remove(self.coordinator.async_add_listener(self.async_write_ha_state))
 
     @property
-    def state(self):
+    def native_value(self):
         if not self.coordinator.data or "ports" not in self.coordinator.data:
             return None
         port_data = self.coordinator.data["ports"].get(self.padded_port_key, {})
         raw_value = port_data.get(self.sensor_type)
-        # DEBUG trace for SNMP raw vs processed before vmap
-        _LOGGER.debug(
-            "raw value [%s]: raw='%s'",
-            self._attr_unique_id,
-            raw_value,
-        )
+        _LOGGER.debug("raw value [%s]: raw='%s'", self._attr_unique_id, raw_value)
+
         if raw_value is None:
             return None
-        processed_value = apply_calc(raw_value, self._entry, self.coordinator, self._attr_unique_id, is_port=True)
-        # DEBUG trace for SNMP raw vs processed before vmap
-        _LOGGER.debug(
-            "apply_calc trace [%s]: raw='%s' → processed='%s'",
-            self._attr_unique_id,
-            raw_value,
-            processed_value,
-        )
+        processed_value = apply_calc(raw_value, self._entry, self.coordinator, self._attr_unique_id, is_port=True, port_key=self.padded_port_key)
+        _LOGGER.debug("apply_calc trace [%s]: raw='%s' → processed='%s'", self._attr_unique_id, raw_value, processed_value)
+        _LOGGER.debug("vmap trace [%s]: raw=%r → processed=%r; vmap=%s", self._attr_unique_id, raw_value, processed_value, self._entry.get("vmap", {}))
 
-        _LOGGER.debug(
-            "vmap trace [%s]: raw=%r → processed=%r; vmap=%s",
-            self._attr_unique_id, raw_value, processed_value, self._entry.get("vmap", {})
-        )
         return apply_vmap(processed_value, self._entry.get("vmap", {}), self._attr_unique_id)
 
 

@@ -248,7 +248,7 @@ class SnmpDataUpdateCoordinator(DataUpdateCoordinator):
         }
 
         # Retrieve device info (used for PoE ports, manufacturer, etc.)
-        poe_ports = self.config_entry.data.get(CONF_DEVICE_INFO, {}).get("poe_ports", [])
+        #poe_ports = self.config_entry.data.get(CONF_DEVICE_INFO, {}).get("poe_ports", [])
 
         # Use lock to avoid race conditions with concurrent polls
         async with self._lock:
@@ -398,24 +398,18 @@ class SnmpDataUpdateCoordinator(DataUpdateCoordinator):
                                 new_data["mac_table"] = {
                                     "last_updated": dt_util.utcnow().isoformat(),
                                     "ports": grouped_ports,  # 🔹 raw numeric ports
-                                    "raw": {                  # 🔹 include untouched SNMP subtree
-                                        "mac_results": macs,
-                                        "port_results": ports,
-                                    },
                                 }
                                 new_data["last_updated"]["mac_table"] = current_time
                                 _LOGGER.debug("MAC table built: %s", new_data["mac_table"])
                         self._last_mac_update = current_time
-
-
+                # Merge new data into coordinator state (keeps previous + last updated info)
+                self.data.update(new_data)
                 _LOGGER.info("Data update completed successfully")
-
             except Exception as e:
                 _LOGGER.error("Error updating data: %s", e)
                 raise
             finally:
                 _LOGGER.debug("Released lock for polling")
-
         # Merge new data into coordinator state (keeps previous + last updated info)
-        self.data.update(new_data)
+        #self.data.update(new_data)
         return self.data

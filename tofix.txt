@@ -1,0 +1,4 @@
+blocking OPen Dir
+
+default on mac collection switch
+switch add logic (if else add entities)

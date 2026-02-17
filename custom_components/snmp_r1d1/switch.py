@@ -32,31 +32,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     prefix = config_entry.data[CONF_ENTITY_PREFIX]
     entities = []
 
-    # Skip setup if controls are not enabled for this device
-    if not config_entry.data.get(CONF_ENABLE_CONTROLS, False):
-        _LOGGER.info("Controls are disabled, skipping switch setup")
-        return
 
     # ----------------------------
-    # Device-level switches
-    # ----------------------------
-    for key, entry in coordinator.validated_oids.get("device", {}).items():
-        if entry.get("type") == "switch":
-            entities.append(SnmpDeviceSwitch(coordinator, key, device_info, prefix, entry))
-            _LOGGER.info(f"Added device switch: {key}")
-
-    # ----------------------------
-    # Port-level switches
-    # ----------------------------
-    for port_key, port_attrs in coordinator.validated_oids.get("ports", {}).items():
-        for key, entry in port_attrs.items():
-            if entry.get("type") == "switch":
-                entities.append(SnmpPortSwitch(coordinator, port_key, key, device_info, prefix, entry))
-                _LOGGER.info(f"Added port switch: {port_key}_{key}")
-
-
-    # ----------------------------
-    # MAC table switches (if OIDs exist)
+    # MAC table switches (independent of CONF_ENABLE_CONTROLS, if OIDs exist)
     # ----------------------------
     has_mac_table = any(
         entry.get("type") == "mac_table"
@@ -69,6 +47,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     if has_mac_table and has_mac_port:
         port_count = int(device_info_data.get("port_count", 1))
+        all_ports = [str(p) for p in range(1, port_count + 1)]
+        default_ports = config_entry.options.get("mac_collection_ports", all_ports)
+
         entities.append(mac_table.GlobalMacCollectionSwitch(
             coordinator, prefix, device_info, 
             config_entry.options.get("mac_collection_ports", []), 
@@ -85,6 +66,29 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         _LOGGER.info("MAC table switches created")
     else:
         _LOGGER.info("No MAC table OIDs found, skipping MAC switches")
+
+    # Skip setup SNMP Switches if controls are not enabled for this device (CONF_ENABLE_CONTROLS)
+    if not config_entry.data.get(CONF_ENABLE_CONTROLS, False):
+        async_add_entities(entities)
+        _LOGGER.info("Controls are disabled, skipping switch setup")
+        return
+
+    # ----------------------------
+    # Device-level SNMP switches
+    # ----------------------------
+    for key, entry in coordinator.validated_oids.get("device", {}).items():
+        if entry.get("type") == "switch":
+            entities.append(SnmpDeviceSwitch(coordinator, key, device_info, prefix, entry))
+            _LOGGER.info(f"Added device switch: {key}")
+
+    # ----------------------------
+    # Port-level SNMP switches
+    # ----------------------------
+    for port_key, port_attrs in coordinator.validated_oids.get("ports", {}).items():
+        for key, entry in port_attrs.items():
+            if entry.get("type") == "switch":
+                entities.append(SnmpPortSwitch(coordinator, port_key, key, device_info, prefix, entry))
+                _LOGGER.info(f"Added port switch: {port_key}_{key}")
 
     # Register all created switch entities
     async_add_entities(entities)
